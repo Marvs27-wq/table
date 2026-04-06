@@ -2,30 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Logic Architect: Team Warfare</title>
+    <title>Logic Architect: Expert Warfare</title>
     <style>
         :root { --bg: #0d1117; --accent: #58a6ff; --text: #c9d1d9; --danger: #f85149; --success: #3fb950; --gold: #f1c40f; }
         body { font-family: 'Segoe UI', monospace; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .screen { display: none; text-align: center; width: 100%; max-width: 750px; }
         .active { display: block; }
         
-        /* Dashboard & Group Locking */
         .group-select { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin: 20px 0; }
         .group-btn { padding: 20px; border: 2px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
         .group-btn:disabled { border-color: #333; color: #555; cursor: not-allowed; text-decoration: line-through; }
         .group-btn.selected { background: var(--accent); color: #000; }
 
-        /* Team Input */
         .name-input-area { margin: 20px 0; padding: 20px; border: 1px solid #333; border-radius: 8px; background: #161b22; }
         .name-field { padding: 10px; width: 250px; background: #0d1117; border: 1px solid var(--accent); color: white; text-align: center; font-size: 1rem; margin-bottom: 10px; }
 
-        /* Scoring Table & Gold Highlight */
         .summary-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #161b22; }
         .summary-table th, .summary-table td { border: 1px solid #30363d; padding: 12px; }
         .summary-table th { background: var(--accent); color: #000; }
         .winner-row { background: rgba(241, 196, 15, 0.2); border: 2px solid var(--gold); color: var(--gold); font-weight: bold; }
 
-        .circuit-box { background: #161b22; border: 1px solid var(--accent); padding: 20px; border-radius: 8px; font-size: 1.6rem; margin: 20px 0; }
+        .circuit-box { background: #161b22; border: 1px solid var(--accent); padding: 20px; border-radius: 8px; font-size: 1.5rem; margin: 20px 0; color: #fff; }
         table { border-collapse: collapse; width: 100%; background: #000; }
         th, td { border: 1px solid #30363d; padding: 10px; text-align: center; }
         input { width: 45px; background: #0d1117; border: 1px solid var(--accent); color: #fff; text-align: center; font-size: 1.2rem; }
@@ -37,23 +34,20 @@
 </head>
 <body>
 
-<!-- DASHBOARD -->
 <div id="dash-screen" class="screen active">
-    <h1 style="color:var(--accent)">COMMAND CENTER</h1>
-    <p>Select a slot to register your team.</p>
+    <h1 style="color:var(--accent)">COMMAND CENTER: EXPERT MODE</h1>
+    <p>Select a slot to register your team. 20 Question Pool Active.</p>
     <div class="group-select" id="group-grid"></div>
 
     <div id="registration-area" class="name-input-area" style="display:none;">
-        <h3>TEAM REGISTRATION: SLOT <span id="slot-id"></span></h3>
-        <input type="text" id="team-name-input" class="name-field" placeholder="Enter Team Name..." maxlength="15">
+        <h3>REGISTER SLOT <span id="slot-id"></span></h3>
+        <input type="text" id="team-name-input" class="name-field" placeholder="Team Name..." maxlength="15">
         <br>
         <button class="btn" onclick="launchGame()">INITIALIZE MISSION</button>
     </div>
-
     <div id="final-summary-area"></div>
 </div>
 
-<!-- GAMEPLAY -->
 <div id="game-screen" class="screen">
     <div style="display:flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px;">
         <span id="grp-display" style="color:var(--gold); font-weight:bold;">TEAM: ?</span>
@@ -69,16 +63,17 @@
 
 <script>
     let groups = [
-        { id: 1, completed: false, score: 0, name: "Group 1" },
-        { id: 2, completed: false, score: 0, name: "Group 2" },
-        { id: 3, completed: false, score: 0, name: "Group 3" },
-        { id: 4, completed: false, score: 0, name: "Group 4" },
-        { id: 5, completed: false, score: 0, name: "Group 5" }
+        { id: 1, completed: false, score: 0, name: "" },
+        { id: 2, completed: false, score: 0, name: "" },
+        { id: 3, completed: false, score: 0, name: "" },
+        { id: 4, completed: false, score: 0, name: "" },
+        { id: 5, completed: false, score: 0, name: "" }
     ];
 
     let activeGrpId = null, currentLvl = 0, lives = 3, timeLeft = 60, timer, currentAnswers = [];
 
-    const pool = [
+    const fullPool = [
+        // Basic & Intermediate (5-10 pts)
         { e: "A AND B", v: 2, f: (a,b) => a && b, p: 5 },
         { e: "A OR B", v: 2, f: (a,b) => a || b, p: 5 },
         { e: "NOT A", v: 1, f: (a) => !a, p: 5 },
@@ -88,14 +83,24 @@
         { e: "NOT (A OR B OR C)", v: 3, f: (a,b,c) => !(a || b || c), p: 10 },
         { e: "(A XOR B) AND C", v: 3, f: (a,b,c) => (a !== b) && c, p: 10 },
         { e: "(A AND C) OR (B AND C)", v: 3, f: (a,b,c) => (a && c) || (b && c), p: 10 },
-        { e: "(A XOR B) OR (B XOR C)", v: 3, f: (a,b,c) => (a !== b) || (b !== c), p: 10 }
+        { e: "(A XOR B) OR (B XOR C)", v: 3, f: (a,b,c) => (a !== b) || (b !== c), p: 10 },
+        // Expert Pool (15-20 pts)
+        { e: "(A AND B) XOR (B OR C)", v: 3, f: (a,b,c) => (a && b) !== (b || c), p: 15 },
+        { e: "NOT (A XOR B) AND (A OR C)", v: 3, f: (a,b,c) => !(a !== b) && (a || c), p: 15 },
+        { e: "(A AND B) OR (B AND C) OR (A AND C)", v: 3, f: (a,b,c) => (a && b) || (b && c) || (a && c), p: 15 },
+        { e: "NOT ((A OR B) AND (NOT C))", v: 3, f: (a,b,c) => !((a || b) && !c), p: 15 },
+        { e: "(A XOR C) OR NOT (B AND A)", v: 3, f: (a,b,c) => (a !== c) || !(b && a), p: 15 },
+        { e: "A XOR (B XOR C)", v: 3, f: (a,b,c) => a !== (b !== c), p: 20 },
+        { e: "NOT (A AND B) XOR NOT (B OR C)", v: 3, f: (a,b,c) => !(a && b) !== !(b || c), p: 20 },
+        { e: "(A OR B) AND NOT (A AND B) AND C", v: 3, f: (a,b,c) => (a || b) && !(a && b) && c, p: 20 },
+        { e: "((A AND C) OR B) XOR (NOT A)", v: 3, f: (a,b,c) => ((a && c) || b) !== (!a), p: 20 },
+        { e: "NOT (A XOR B XOR C) AND (A OR B)", v: 3, f: (a,b,c) => !(a !== b !== c) && (a || b), p: 20 }
     ];
 
     function renderDashboard() {
         const grid = document.getElementById('group-grid');
         grid.innerHTML = '';
         let allDone = true;
-        
         groups.forEach(g => {
             const btn = document.createElement('button');
             btn.className = `group-btn ${activeGrpId === g.id ? 'selected' : ''}`;
@@ -110,32 +115,27 @@
             grid.appendChild(btn);
             if(!g.completed) allDone = false;
         });
-
         if(allDone) showFinalSummary();
     }
 
     function launchGame() {
         const nameInput = document.getElementById('team-name-input');
-        if(nameInput.value.trim() === "") { alert("Please enter a Team Name!"); return; }
-        
+        if(!nameInput.value.trim()) { alert("Enter Team Name!"); return; }
         const g = groups.find(x => x.id === activeGrpId);
         g.name = nameInput.value.trim().toUpperCase();
-        
         document.getElementById('dash-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
         document.getElementById('grp-display').innerText = `TEAM: ${g.name}`;
-        
-        nameInput.value = ""; // Clear for next use
+        nameInput.value = ""; 
         document.getElementById('registration-area').style.display = 'none';
-        
         currentLvl = 0; lives = 3; 
-        pool.sort(() => Math.random() - 0.5);
+        fullPool.sort(() => Math.random() - 0.5);
         loadLevel();
     }
 
     function loadLevel() {
         clearInterval(timer);
-        const l = pool[currentLvl];
+        const l = fullPool[currentLvl];
         document.getElementById('lvl-display').innerText = `LVL: ${currentLvl + 1}/10`;
         document.getElementById('expression').innerText = l.e;
         document.getElementById('feedback').innerText = "";
@@ -165,9 +165,10 @@
         currentAnswers.forEach((ans, i) => {
             if(parseInt(document.getElementById(`r-${i}`).value) !== ans) correct = false;
         });
-
         if(correct) {
-            groups.find(x => x.id === activeGrpId).score += pool[currentLvl].p;
+            const g = groups.find(x => x.id === activeGrpId);
+            // Score = Question Points + Remaining Seconds (Tie-breaker)
+            g.score += fullPool[currentLvl].p + timeLeft;
             currentLvl++;
             if(currentLvl < 10) loadLevel(); else endMission(true);
         } else {
@@ -197,8 +198,7 @@
     function showFinalSummary() {
         const sorted = [...groups].sort((a,b) => b.score - a.score);
         const topScore = sorted[0].score;
-
-        let h = `<h2>🏁 FINAL RANKINGS</h2><table class="summary-table"><tr><th>RANK</th><th>TEAM NAME</th><th>SCORE</th></tr>`;
+        let h = `<h2>🏁 FINAL RANKINGS</h2><table class="summary-table"><tr><th>RANK</th><th>TEAM NAME</th><th>TOTAL SCORE</th></tr>`;
         sorted.forEach((g, i) => {
             const isWin = g.score === topScore && topScore > 0;
             h += `<tr class="${isWin ? 'winner-row' : ''}"><td>#${i+1}</td><td>${isWin ? '🏆 ' : ''}${g.name}</td><td>${g.score}</td></tr>`;
